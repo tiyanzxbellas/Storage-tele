@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📦 Telegram Storage — Setting</title>
+<link rel="stylesheet" href="style.css">
+<script src="config.js"></script>
+<script src="api.js"></script>
+</head>
+<body>
+<header>
+  <span class="logo">📦 Telegram Storage</span>
+</header>
+<div class="container">
+
+  <h2>⚙️ Pengaturan</h2>
+  <p class="sub">Informasi koneksi bot & chat kamu.</p>
+  <div class="set-row"><span class="k">🤖 Nama Bot</span><span class="v" id="bot-name">—</span></div>
+  <div class="set-row"><span class="k">🆔 Bot Username</span><span class="v" id="bot-user">—</span></div>
+  <div class="set-row"><span class="k">👤 Chat ID</span><span class="v" id="chat-id">—</span></div>
+  <div class="set-row"><span class="k">💬 Tipe Chat</span><span class="v" id="chat-type">—</span></div>
+  <div class="set-row"><span class="k">📡 Mode</span><span class="v" id="mode">—</span></div>
+  <div class="set-row"><span class="k">🔑 Token</span><span class="v" id="token">••••••••</span></div>
+  <div style="margin-top:20px">
+    <button class="btn" onclick="testConn(this)">🔌 Tes Koneksi</button>
+    <button class="btn ghost" onclick="location.reload()">🔄 Muat Ulang</button>
+  </div>
+
+</div>
+<nav>
+<a href="index.html" data-page="file"><span class="ic">📄</span><span>File</span></a>
+<a href="foto.html" data-page="foto"><span class="ic">🖼</span><span>Foto</span></a>
+<a href="audio.html" data-page="audio"><span class="ic">🎵</span><span>Audio</span></a>
+<a href="video.html" data-page="video"><span class="ic">🎬</span><span>Video</span></a>
+<a href="rename.html" data-page="rename"><span class="ic">✏️</span><span>Rename</span></a>
+<a href="settings.html" data-page="settings" class="active"><span class="ic">⚙️</span><span>Setting</span></a>
+</nav>
+<div class="toast" id="toast"></div>
+<footer>Pribadi • file tersimpan di server Telegram</footer>
+<script>
+
+setActive('settings');
+document.getElementById('token').textContent = BOT_TOKEN.slice(0, 10) + '...' + BOT_TOKEN.slice(-6);
+document.getElementById('chat-id').textContent = CHAT_ID;
+
+async function load() {
+  await API.init();
+  document.getElementById('mode').textContent = API.mode.toUpperCase();
+  try {
+    const me = await API.me();
+    document.getElementById('bot-name').textContent = me.first_name || '—';
+    document.getElementById('bot-user').textContent = '@' + (me.username || '—');
+  } catch (e) { showToast(`⚠️ ${e.message}`, 5000); }
+  try {
+    const chat = await API.getChat();
+    document.getElementById('chat-type').textContent = chat.type || '—';
+  } catch (e) { /* chat type optional */ }
+}
+
+async function testConn(btn) {
+  btn.classList.add('loading');
+  btn.disabled = true;
+  try {
+    const me = await API.me();
+    showToast(`✅ Terhubung sebagai ${me.first_name} (@${me.username})`);
+  } catch (e) { showToast(`❌ Gagal: ${e.message}`, 5000); }
+  finally { btn.classList.remove('loading'); btn.disabled = false; }
+}
+
+load();
+
+</script>
+</body>
+</html>

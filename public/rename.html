@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📦 Telegram Storage — Rename</title>
+<link rel="stylesheet" href="style.css">
+<script src="config.js"></script>
+<script src="api.js"></script>
+</head>
+<body>
+<header>
+  <span class="logo">📦 Telegram Storage</span>
+</header>
+<div class="container">
+
+  <h2>✏️ Rename / Edit Caption</h2>
+  <p class="sub">Ubah caption file yang sudah diupload. Pilih file dari daftar, atau lewat tombol ✏️ di galeri.</p>
+  <div class="form-card">
+    <label>Pilih file</label>
+    <select id="file-select"><option value="">Memuat daftar...</option></select>
+    <label>Caption baru</label>
+    <textarea id="caption-input" rows="3" placeholder="Tulis caption baru... (kosongkan untuk hapus caption)"></textarea>
+    <button class="btn" id="save-btn" onclick="doRename()">💾 Simpan Caption</button>
+  </div>
+
+</div>
+<nav>
+<a href="index.html" data-page="file"><span class="ic">📄</span><span>File</span></a>
+<a href="foto.html" data-page="foto"><span class="ic">🖼</span><span>Foto</span></a>
+<a href="audio.html" data-page="audio"><span class="ic">🎵</span><span>Audio</span></a>
+<a href="video.html" data-page="video"><span class="ic">🎬</span><span>Video</span></a>
+<a href="rename.html" data-page="rename" class="active"><span class="ic">✏️</span><span>Rename</span></a>
+<a href="settings.html" data-page="settings"><span class="ic">⚙️</span><span>Setting</span></a>
+</nav>
+<div class="toast" id="toast"></div>
+<footer>Pribadi • file tersimpan di server Telegram</footer>
+<script>
+
+setActive('rename');
+const select = document.getElementById('file-select');
+const captionInput = document.getElementById('caption-input');
+let files = [];
+
+async function load() {
+  try {
+    files = await API.list();
+    select.innerHTML = '';
+    if (!files.length) {
+      select.innerHTML = '<option value="">Tidak ada file</option>';
+      return;
+    }
+    files.forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.message_id;
+      o.textContent = `${fileIcon(f)} ${getName(f)}${getCaption(f) ? ' — ' + getCaption(f) : ''}`;
+      select.appendChild(o);
+    });
+    const params = new URLSearchParams(location.search);
+    const msg = params.get('msg');
+    if (msg) select.value = msg;
+    onSelect();
+  } catch (e) {
+    select.innerHTML = `<option value="">⚠️ Gagal: ${e.message}</option>`;
+    showToast(`⚠️ ${e.message}`, 5000);
+  }
+}
+
+function onSelect() {
+  const f = files.find(x => String(x.message_id) === select.value);
+  captionInput.value = f ? (getCaption(f) || '') : '';
+}
+
+async function doRename() {
+  if (!select.value) return showToast('⚠️ Pilih file dulu');
+  const cap = captionInput.value.trim();
+  const btn = document.getElementById('save-btn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  try {
+    await API.rename(Number(select.value), cap);
+    showToast('✏️ Caption berhasil diubah');
+    load();
+  } catch (e) { showToast(`⚠️ Gagal: ${e.message}`, 5000); }
+  finally { btn.classList.remove('loading'); btn.disabled = false; }
+}
+
+select.onchange = onSelect;
+load();
+
+</script>
+</body>
+</html>

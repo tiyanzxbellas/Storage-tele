@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📦 Telegram Storage — Video</title>
+<link rel="stylesheet" href="style.css">
+<script src="config.js"></script>
+<script src="api.js"></script>
+</head>
+<body>
+<header>
+  <span class="logo">📦 Telegram Storage</span>
+</header>
+<div class="container">
+
+  <h2>📦 Telegram Storage — Video</h2>
+  <p class="sub">Video & GIF yang pernah dikirim.</p>
+  <div id="gallery"></div>
+  <div id="empty"><div class="big">🗂</div><p>Belum ada file di kategori ini.</p></div>
+  <input type="file" id="file-input" multiple style="display:none">
+  <div id="upload-panel"></div>
+
+</div>
+<nav>
+<a href="index.html" data-page="file"><span class="ic">📄</span><span>File</span></a>
+<a href="foto.html" data-page="foto"><span class="ic">🖼</span><span>Foto</span></a>
+<a href="audio.html" data-page="audio"><span class="ic">🎵</span><span>Audio</span></a>
+<a href="video.html" data-page="video" class="active"><span class="ic">🎬</span><span>Video</span></a>
+<a href="rename.html" data-page="rename"><span class="ic">✏️</span><span>Rename</span></a>
+<a href="settings.html" data-page="settings"><span class="ic">⚙️</span><span>Setting</span></a>
+</nav>
+<div class="toast" id="toast"></div>
+<footer>Pribadi • file tersimpan di server Telegram</footer>
+<script>
+setActive('video');
+const gallery = document.getElementById('gallery');
+const empty = document.getElementById('empty');
+const fileInput = document.getElementById('file-input');
+
+function makeCard(f) {
+  const div = document.createElement('div');
+  div.className = 'card';
+  const fileUrl = getFileUrl(f);
+  const thumb = getThumbUrl(f);
+  const isVideo = f.type === 'video' || f.type === 'animation';
+  const isAudio = f.type === 'audio' || f.type === 'voice';
+  const msgId = f.message_id;
+  const cap = getCaption(f);
+
+  let thumbHtml = `<div class="thumb"><span class="icon">${fileIcon(f)}</span></div>`;
+  if (thumb) {
+    thumbHtml = `<div class="thumb"><img src="${thumb}" loading="lazy" alt=""><span class="badge">${fileIcon(f)}</span>${isVideo ? '<span class="play">▶</span>' : ''}</div>`;
+  }
+  div.innerHTML = `
+    ${thumbHtml}
+    <div class="info">
+      <span class="name" title="${getName(f).replace(/\"/g,'&quot;')}">${getName(f).replace(/</g,'&lt;')}</span>
+      <span style="font-size:10px;color:#64748b">${fmtSize(getSize(f))}</span>
+    </div>
+    ${cap ? `<div style="padding:0 10px 4px;font-size:11px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">💬 ${cap.replace(/</g,'&lt;')}</div>` : ''}
+    ${isAudio ? `<audio controls preload="none" src="${fileUrl}" style="padding:0 10px 8px"></audio>` : ''}
+    <div class="actions">
+      <button title="Lihat" onclick="window.open('${fileUrl}','_blank')">👁</button>
+      <button title="Rename caption" onclick="location.href='rename.html?msg=${msgId}'">✏️</button>
+      <button class="del" title="Hapus" onclick="delFile(${msgId})">🗑</button>
+    </div>`;
+  if (thumb) div.querySelector('.thumb').onclick = () => window.open(fileUrl, '_blank');
+  return div;
+}
+
+function showSkeleton() {
+  empty.style.display = 'none';
+  gallery.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const s = document.createElement('div');
+    s.className = 'skeleton';
+    s.innerHTML = '<div class="thumb"></div><div class="line" style="width:70%"></div><div class="line" style="width:40%"></div>';
+    gallery.appendChild(s);
+  }
+}
+
+function render(files) {
+  gallery.innerHTML = '';
+  if (!files.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  files.forEach((f, i) => {
+    const card = makeCard(f);
+    card.style.animationDelay = `${Math.min(i, 12) * 35}ms`;
+    gallery.appendChild(card);
+  });
+}
+
+async function delFile(msgId) {
+  if (!confirm('Hapus file ini dari Telegram?')) return;
+  try {
+    await API.delete(msgId);
+    showToast('🗑 File dihapus dari Telegram');
+    load();
+  } catch (e) { showToast(`⚠️ Gagal hapus: ${e.message}`, 5000); }
+}
+
+async function load() {
+  showSkeleton();
+  try {
+    const all = await API.list();
+    const files = all.filter(f => (f.type === "video" || f.type === "animation"));
+    render(files);
+    showToast(`✅ ${files.length} file dimuat`);
+  } catch (e) {
+    showToast(`⚠️ Gagal memuat: ${e.message}`, 5000);
+  }
+}
+
+// Upload floating button
+const fab = document.createElement('button');
+fab.id = 'fab';
+fab.innerHTML = '<span class="ic-normal">📤</span><span class="ic-spin" style="display:none">⏳</span>';
+fab.title = 'Upload';
+fab.onclick = () => fileInput.click();
+document.body.appendChild(fab);
+
+const uploadPanel = document.getElementById('upload-panel');
+
+fileInput.onchange = () => {
+  if (!fileInput.files.length) return;
+  uploadFiles(fileInput.files);
+  fileInput.value = '';
+};
+
+function setUploadProgress(current, total, name, pct) {
+  uploadPanel.classList.add('show');
+  uploadPanel.innerHTML = `
+    <div class="row">
+      <span class="spinner"></span>
+      <span class="name">Mengunggah ${name} (${current}/${total})</span>
+      <span class="pct">${Math.round(pct)}%</span>
+    </div>
+    <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>`;
+}
+
+function hideUploadProgress() {
+  uploadPanel.classList.remove('show');
+  setTimeout(() => { uploadPanel.innerHTML = ''; }, 250);
+}
+
+async function uploadFiles(files) {
+  fab.classList.add('busy');
+  fab.querySelector('.ic-normal').style.display = 'none';
+  fab.querySelector('.ic-spin').style.display = 'inline-block';
+  showToast(`📤 Mengirim ${files.length} file...`, 2000);
+  let i = 0;
+  for (const file of files) {
+    i++;
+    setUploadProgress(i, files.length, file.name, 0);
+    try {
+      await API.upload(file, pct => setUploadProgress(i, files.length, file.name, pct));
+    } catch (e) { showToast(`⚠️ Gagal: ${file.name} — ${e.message}`, 4000); }
+  }
+  hideUploadProgress();
+  fab.classList.remove('busy');
+  fab.querySelector('.ic-normal').style.display = 'inline-block';
+  fab.querySelector('.ic-spin').style.display = 'none';
+  showToast('✅ Upload selesai');
+  load();
+}
+load();
+
+</script>
+</body>
+</html>

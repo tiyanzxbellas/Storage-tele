@@ -1,0 +1,13 @@
+{
+  "name": "telegram-storage",
+  "version": "5.0.0",
+  "description": "Penyimpanan pribadi via Telegram Bot API - 6 pages, index-based",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

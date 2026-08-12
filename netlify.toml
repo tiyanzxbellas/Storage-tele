@@ -1,0 +1,11 @@
+[build]
+  command = "echo 'static build, no framework'"
+  publish = "public"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/api/telegram"
+  to = "/.netlify/functions/telegram"
+  status = 200
